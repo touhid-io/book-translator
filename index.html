@@ -2007,11 +2007,9 @@
             }
 
             const userMessageContent = userInput;
-
-            // ১. আপনার পাঠানো মেসেজটি স্ক্রিনে দেখানো হচ্ছে
+            
             chats[currentChatId].messages.push({ type: 'user', content: userMessageContent, timestamp: Date.now() });
             
-            // Automatic Title Generation
             if (chats[currentChatId].title === 'New Translation' && userMessageContent.split(' ').length > 2) {
                 const newTitle = userMessageContent.split(' ').slice(0, 5).join(' ');
                 chats[currentChatId].title = newTitle;
@@ -2020,20 +2018,21 @@
                 renderChatList();
             }
             
-            renderChatMessages(); // মেসেজটি স্ক্রিনে দেখানোর জন্য এই লাইনটি জরুরি
+            renderChatMessages();
 
             messageInput.value = '';
             autoResizeTextarea(messageInput);
             showTypingIndicator();
 
-            // ২. Lindy Webhook URL-এ রিকোয়েস্ট পাঠানো
             const LINDY_WEBHOOK_URL = 'https://public.lindy.ai/api/v1/webhooks/lindy/f2195c36-91c7-49b0-a5b0-ee8bf68fc007';
+            const SECRET_KEY = 'fd82b0ec432066c28074f64cd59f49caa6d1f5ed95c43072c0b4106d4e378459';
 
             try {
                 const response = await fetch(LINDY_WEBHOOK_URL, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${SECRET_KEY}` // এখানে Secret Key যোগ করা হয়েছে
                     },
                     body: JSON.stringify({
                         message: userMessageContent,
@@ -2042,12 +2041,14 @@
                 });
 
                 if (!response.ok) {
+                    // সার্ভার থেকে এরর রেসপন্স পেলে সেটি দেখানোর চেষ্টা
+                    const errorData = await response.json().catch(() => null);
+                    console.error('Error Data from Server:', errorData);
                     throw new Error(`Network response was not ok, status: ${response.status}`);
                 }
 
                 const data = await response.json();
                 
-                // ৩. Lindy থেকে পাওয়া উত্তর UI-তে দেখানো
                 const botReply = data.reply || "দুঃখিত, কোনো উত্তর পাওয়া যায়নি।";
                 chats[currentChatId].messages.push({ type: 'assistant', content: botReply, timestamp: Date.now() });
                 renderChatMessages();
